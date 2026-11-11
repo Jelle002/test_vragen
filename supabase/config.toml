@@ -1,0 +1,7 @@
+project_id = "kamervragen-quiz"
+
+# Minimale Supabase CLI-configuratie voor dit project.
+# De functie controleert zelf wie hem aanroept (admin-login of IMPORT_SECRET),
+# daarom staat de standaard JWT-controle van de gateway uit.
+[functions.import-kamervragen]
+verify_jwt = false

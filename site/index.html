@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Kamervragen-quiz</title>
+<meta name="description" content="Raad of het antwoord op Kamervragen al te googelen was, en stem of het een slimme of domme vraag was.">
+<link rel="stylesheet" href="css/stijl.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Schriftelijke vragen · Tweede Kamer</div>
+    <h1>Kamervragen-quiz</h1>
+    <p class="lede">Kamerleden stellen het kabinet elke week schriftelijke vragen. Maar hoeveel daarvan hadden ze ook gewoon kunnen googelen? Raad het, en zeg daarna of het een slimme of een domme vraag was.</p>
+    <div class="how">
+      <div><b>1. Googlebaar?</b>Raad of het antwoord al online te vinden was voordat de vraag gesteld werd.</div>
+      <div><b>2. Slim of dom?</b>Is de vraag beantwoord? Lees het antwoord en geef je mening.</div>
+      <div><b>Gecontroleerd en partijneutraal</b>Elke vraag is door een redacteur nagekeken. We beoordelen het soort vraag, niet de partij.</div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <span class="status" id="status" role="status" aria-live="polite">Laden…</span>
+    <span class="status">Geen account, geen cookies, geen tracking</span>
+  </div>
+
+  <main id="quiz">
+    <div class="leeg" id="leeg">Vragen worden geladen…</div>
+  </main>
+
+  <footer>
+    <span>Bron: <a href="https://www.tweedekamer.nl/kamerstukken/kamervragen" target="_blank" rel="noopener noreferrer">tweedekamer.nl/kamerstukken/kamervragen</a>. Klik op een titel voor de volledige vragen.</span>
+    <span><b>Privacy.</b> Deze site verzamelt geen persoonsgegevens: je logt niet in, er worden geen cookies of lokale opslag gebruikt en er is geen analytics. Je antwoorden tellen alleen mee in anonieme totalen per vraag; er wordt niets per bezoeker bewaard. Let op: de hostingpartijen (GitHub Pages en Supabase) houden zelf technische serverlogs bij, waaronder IP-adressen, waar deze site geen invloed op heeft.</span>
+    <span>Samenvattingen en scores zijn opgesteld met hulp van AI en door een redacteur gecontroleerd. "Niet gevonden" betekent niet dat iets nergens online stond.</span>
+  </footer>
+</div>
+
+<template id="t-vraag">
+  <article class="card">
+    <div class="top">
+      <div class="voortgang" aria-hidden="true"></div>
+      <div class="meta"><span class="nr"></span><span class="dt"></span><span class="pos"></span></div>
+      <h2><a target="_blank" rel="noopener noreferrer"></a></h2>
+      <div class="who"></div>
+    </div>
+    <div class="sectie">
+      <div class="k"><span>De vragen in het kort</span></div>
+      <p class="tekst samenvatting"></p>
+    </div>
+    <div class="sectie stap1">
+      <p class="vraag">Was het antwoord al met Google te vinden?</p>
+      <div class="keuze" role="group" aria-label="Googlebaar">
+        <button type="button" data-g="ja">Ja, googlebaar</button>
+        <button type="button" data-g="nee">Nee, echt nieuw</button>
+      </div>
+      <div class="onthul1" hidden>
+        <div class="uitslag" aria-live="polite"></div>
+        <p class="why g-uitleg"></p>
+        <ul class="bronnen"></ul>
+        <div class="split g-split" aria-hidden="true"><span class="a"></span><span class="b"></span></div>
+        <div class="tally g-tally"></div>
+      </div>
+    </div>
+    <div class="sectie stap2" hidden>
+      <div class="k"><span>Het antwoord van het kabinet</span></div>
+      <p class="tekst antwoord"></p>
+      <p class="vraag">Slimme of domme vraag?</p>
+      <div class="keuze" role="group" aria-label="Slim of dom">
+        <button type="button" class="s" data-m="slim">Slim</button>
+        <button type="button" class="d" data-m="dom">Dom</button>
+      </div>
+      <div class="onthul2" hidden>
+        <div class="split m-split" aria-hidden="true"><span class="a"></span><span class="b"></span></div>
+        <div class="tally m-tally"></div>
+      </div>
+    </div>
+    <div class="sectie zacht oordeel" hidden>
+      <div class="k"><span>Oordeel redactie</span><span>van 10</span></div>
+      <div class="score"><span class="n"></span><span class="v"></span></div>
+      <div class="ticks" aria-hidden="true"></div>
+      <p class="why s-uitleg"></p>
+      <p class="why nog" hidden>Deze vraag is nog niet beantwoord. Stemmen over slim of dom kan zodra het antwoord er is.</p>
+    </div>
+    <div class="sectie volgende" hidden>
+      <div class="knoppen"><button type="button" class="knop">Volgende vraag</button></div>
+    </div>
+  </article>
+</template>
+
+<script src="js/config.js"></script>
+<script src="vendor/supabase-2.117.3.js"></script>
+<script src="js/quiz.js"></script>
+</body>
+</html>
