@@ -1,5 +1,5 @@
 # Kamervragen-quiz
-
+(Fully made with AI)
 A quiz about written questions from members of the Dutch parliament (Tweede Kamer):
 
 1. **Googlebaar?** Visitors guess whether the answer was already findable online before the question was asked.
