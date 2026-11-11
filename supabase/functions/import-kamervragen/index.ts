@@ -18,7 +18,9 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const IMPORT_SECRET = Deno.env.get("IMPORT_SECRET") ?? "";
+const HEEFT_AI = !!Deno.env.get("ANTHROPIC_API_KEY");             // zonder sleutel: alleen ophalen, beoordelen via claude.ai
 const MAX_AI = Number(Deno.env.get("MAX_AI_PER_RUN") ?? "3");     // max. AI-beoordelingen per run
+const MAX_ZONDER_AI = Number(Deno.env.get("MAX_IMPORT_PER_RUN") ?? "20"); // max. nieuwe vragen per run zonder AI
 const ZAKEN = Number(Deno.env.get("ZAKEN_PER_RUN") ?? "50");      // hoeveel recente zaken bekijken
 const DAGEN = Number(Deno.env.get("IMPORT_DAGEN") ?? "30");       // hoe ver terug
 
@@ -76,6 +78,7 @@ async function tekstVan(doc: Kamervraag["vraagDoc"]): Promise<string | null> {
 
 async function aiVoor(kv: { titel: string; nummer: string | null; datum: string | null; indieners: string[]; aan: string | null },
   vraagTekst: string | null, antwoordTekst: string | null): Promise<{ ai: AiConcept | null; fout: string | null }> {
+  if (!HEEFT_AI) return { ai: null, fout: null };
   try {
     return { ai: await beoordeel({ ...kv, vraagTekst, antwoordTekst }), fout: null };
   } catch (e) {
@@ -146,10 +149,11 @@ async function importeer(db: SupabaseClient) {
       taken.push(async () => (await antwoordBinnen(db, rij, kv)) ? "bijgewerkt" : null);
     }
   }
-  resultaat.overgeslagen = Math.max(0, taken.length - MAX_AI);
+  const max = HEEFT_AI ? MAX_AI : MAX_ZONDER_AI;
+  resultaat.overgeslagen = Math.max(0, taken.length - max);
 
   // Parallel, zodat de functie binnen de tijdslimiet van Supabase blijft.
-  const uitkomsten = await Promise.allSettled(taken.slice(0, MAX_AI).map((t) => t()));
+  const uitkomsten = await Promise.allSettled(taken.slice(0, max).map((t) => t()));
   for (const u of uitkomsten) {
     if (u.status === "rejected") resultaat.fouten.push(u.reason instanceof Error ? u.reason.message : String(u.reason));
     else if (u.value === "nieuw") resultaat.nieuw++;
@@ -159,6 +163,9 @@ async function importeer(db: SupabaseClient) {
 }
 
 async function herbeoordeel(db: SupabaseClient, id: string) {
+  if (!HEEFT_AI) {
+    return { nieuw: 0, bijgewerkt: 0, overgeslagen: 0, fouten: ["Er is geen ANTHROPIC_API_KEY ingesteld. Gebruik \"Beoordelen via Claude.ai\" in het overzicht."] };
+  }
   const { data: rij, error } = await db.from("vragen").select("*").eq("id", id).single();
   if (error || !rij) throw new Error("Vraag niet gevonden");
   let vraagTekst = rij.vraag_tekst as string | null;

@@ -46,10 +46,36 @@
       </div>
       <div class="seg">
         <button type="button" id="b-ophalen">Nieuwe vragen ophalen</button>
+        <button type="button" id="b-claude">Beoordelen via Claude.ai</button>
         <button type="button" id="b-2fa">2FA instellen</button>
         <button type="button" data-uitloggen>Uitloggen</button>
       </div>
     </div>
+    <div class="card" id="v-claude" hidden>
+      <div class="sectie" style="border-top:0">
+        <div class="k"><span>Beoordelen via Claude.ai (met je Pro-abonnement)</span></div>
+        <p class="why">Maak één prompt voor meerdere vragen, plak die in een nieuw gesprek op claude.ai en plak het antwoord van Claude hieronder terug. Het resultaat wordt opgeslagen als AI-voorstel. Je controleert en publiceert daarna zoals gewoonlijk.</p>
+        <div class="rij">
+          <label>Maximaal aantal vragen<input type="number" id="c-max" min="1" max="30" value="10"></label>
+          <label class="vink" style="align-self:end"><input type="checkbox" id="c-zonder" checked> Alleen vragen zonder AI-voorstel</label>
+        </div>
+        <div class="knoppen"><button type="button" class="knop" id="b-prompt">1. Maak prompt</button></div>
+        <div id="c-stap2" hidden style="display:grid;gap:10px">
+          <p class="why" id="c-info"></p>
+          <textarea id="c-prompt" rows="8" readonly></textarea>
+          <div class="knoppen"><button type="button" class="knop" id="b-kopieer">2. Kopieer prompt</button></div>
+          <ol class="why" style="margin:0;padding-left:20px">
+            <li>Open <a href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">claude.ai</a> en start een nieuw gesprek.</li>
+            <li>Zet <b>Zoeken op internet</b> (Web search) aan, via het knopje met de schuifjes onder het invoerveld.</li>
+            <li>Plak de prompt, verstuur hem en wacht tot Claude helemaal klaar is.</li>
+            <li>Kopieer het volledige antwoord (met de kopieerknop onder het antwoord of in het codeblok) en plak het hieronder.</li>
+          </ol>
+          <label>3. Antwoord van Claude<textarea id="c-antwoord" rows="8" placeholder='[{"id": "…", "googlebaar": true, …}]'></textarea></label>
+          <div class="knoppen"><button type="button" class="knop groen" id="b-verwerk">4. Verwerk antwoord</button></div>
+        </div>
+      </div>
+    </div>
+
     <div class="lijst" id="lijst"></div>
 
     <div class="card" id="v-2fa" hidden>
