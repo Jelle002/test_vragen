@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Beheer · Kamervragen-quiz</title>
+<link rel="stylesheet" href="css/stijl.css">
+</head>
+<body>
+<div class="wrap breed">
+  <header>
+    <div class="eyebrow">Beheer</div>
+    <h1>Kamervragen controleren</h1>
+    <p class="lede">Alles komt binnen als concept. Pas na jouw controle en "Publiceren" verschijnt een vraag in de quiz.</p>
+  </header>
+
+  <div id="melding" class="melding" role="status" aria-live="polite" hidden></div>
+
+  <!-- Inloggen -->
+  <section id="v-login" class="card" hidden>
+    <form id="f-login" class="sectie" style="border-top:0">
+      <label>E-mailadres<input type="email" id="l-email" autocomplete="username" required></label>
+      <label>Wachtwoord<input type="password" id="l-ww" autocomplete="current-password" required></label>
+      <div class="knoppen"><button class="knop" type="submit">Inloggen</button></div>
+    </form>
+  </section>
+
+  <!-- 2FA-code invoeren -->
+  <section id="v-mfa" class="card" hidden>
+    <form id="f-mfa" class="sectie" style="border-top:0">
+      <label>Code uit je authenticator-app<input type="text" id="m-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+      <div class="knoppen"><button class="knop licht" type="button" data-uitloggen>Uitloggen</button><button class="knop" type="submit">Bevestigen</button></div>
+    </form>
+  </section>
+
+  <!-- Overzicht -->
+  <section id="v-lijst" hidden>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Status" id="tabs">
+        <button type="button" data-tab="concept" aria-pressed="true">Concept</button>
+        <button type="button" data-tab="herzien" aria-pressed="false">Herzien nodig</button>
+        <button type="button" data-tab="gepubliceerd" aria-pressed="false">Gepubliceerd</button>
+        <button type="button" data-tab="afgewezen" aria-pressed="false">Afgewezen</button>
+      </div>
+      <div class="seg">
+        <button type="button" id="b-ophalen">Nieuwe vragen ophalen</button>
+        <button type="button" id="b-2fa">2FA instellen</button>
+        <button type="button" data-uitloggen>Uitloggen</button>
+      </div>
+    </div>
+    <div class="lijst" id="lijst"></div>
+
+    <div class="card" id="v-2fa" hidden>
+      <div class="sectie" style="border-top:0">
+        <div class="k"><span>Tweestapsverificatie (aanbevolen)</span></div>
+        <p class="why">Scan de QR-code met een authenticator-app (bijv. Google Authenticator, 1Password of Microsoft Authenticator) en vul de code in. Daarna is bij elke login een code nodig.</p>
+        <img id="q-qr" alt="QR-code voor tweestapsverificatie" width="200" height="200" style="background:#fff;padding:8px;border-radius:4px">
+        <p class="why">Of voer deze sleutel handmatig in: <code id="q-geheim"></code></p>
+        <form id="f-2fa" class="rij">
+          <label>Code<input type="text" id="q-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+          <div class="knoppen" style="align-self:end"><button class="knop" type="submit">Activeren</button></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bewerken -->
+  <section id="v-edit" class="card" hidden>
+    <div class="top">
+      <div class="meta"><span class="nr" id="e-nr"></span><span id="e-status" class="tag"></span><span id="e-herzien" class="tag" hidden>herzien nodig</span></div>
+      <h2 id="e-kop"></h2>
+    </div>
+    <form id="f-edit">
+      <div class="sectie">
+        <div class="k"><span>Basisgegevens (uit de Tweede Kamer open data)</span></div>
+        <label>Titel<input type="text" id="e-titel" required></label>
+        <div class="rij">
+          <label>Kamernummer<input type="text" id="e-nummer"></label>
+          <label>Datum<input type="date" id="e-datum"></label>
+        </div>
+        <label>Indieners (één per regel)<textarea id="e-indieners" rows="3"></textarea></label>
+        <label>Gericht aan<input type="text" id="e-aan"></label>
+        <label>Link naar de vragen<input type="url" id="e-link"></label>
+        <details><summary>Volledige tekst van de vragen</summary><pre class="ruw" id="e-vraagtekst"></pre></details>
+        <details><summary>Volledige tekst van het antwoord</summary><pre class="ruw" id="e-antwoordtekst"></pre></details>
+      </div>
+
+      <div class="sectie">
+        <div class="k"><span>AI-voorstel</span><button type="button" class="knop licht" id="b-ai" style="min-height:0;padding:4px 10px;font-size:13px">AI opnieuw laten beoordelen</button></div>
+        <div class="ai" id="e-ai"></div>
+        <div class="knoppen"><button type="button" class="knop licht" id="b-overnemen">AI-voorstel overnemen in lege velden</button></div>
+      </div>
+
+      <div class="sectie">
+        <div class="k"><span>Wat de quiz toont (controleer alles)</span></div>
+        <label>Samenvatting van de vragen<textarea id="e-vsam" rows="3"></textarea></label>
+        <fieldset class="radio" style="border:0;padding:0;margin:0">
+          <legend style="font-weight:600;font-size:14px;margin-bottom:4px">Was het antwoord googlebaar?</legend>
+          <label><input type="radio" name="g" value="ja"> Ja</label>
+          <label><input type="radio" name="g" value="nee"> Nee</label>
+          <label><input type="radio" name="g" value=""> Nog niet bepaald</label>
+        </fieldset>
+        <label>Uitleg bij googlebaar<textarea id="e-guitleg" rows="3"></textarea></label>
+        <label>Bronnen (één per regel: titel | https://…)<textarea id="e-bronnen" rows="3"></textarea></label>
+        <label class="vink"><input type="checkbox" id="e-beantwoord"> De vraag is beantwoord (stap "slim of dom" tonen)</label>
+        <label>Samenvatting van het antwoord<textarea id="e-asam" rows="3"></textarea></label>
+        <div class="rij">
+          <label>Score (1–10)<input type="number" id="e-score" min="1" max="10" step="1"></label>
+        </div>
+        <label>Uitleg bij de score<textarea id="e-suitleg" rows="3"></textarea></label>
+      </div>
+
+      <div class="sectie">
+        <label class="vink"><input type="checkbox" id="e-gecontroleerd"> Ik heb alle gegevens, de samenvattingen en de bronnen gecontroleerd</label>
+        <div class="knoppen">
+          <button type="button" class="knop licht" id="b-terug">Terug naar overzicht</button>
+          <button type="button" class="knop licht" id="b-opslaan">Opslaan als concept</button>
+          <button type="button" class="knop rood" id="b-afwijzen">Afwijzen</button>
+          <button type="button" class="knop groen" id="b-publiceren" disabled>Publiceren</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script src="js/config.js"></script>
+<script src="vendor/supabase-2.117.3.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
