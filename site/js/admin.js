@@ -155,6 +155,153 @@
     }
   };
 
+  // ---------------------------------------------------------------- via Claude.ai (handmatig kopiëren/plakken)
+  const PROMPT_KOP = `Je beoordeelt schriftelijke Kamervragen van de Nederlandse Tweede Kamer voor een publieksquiz.
+Je werk is een concept: een redacteur controleert alles voordat het gepubliceerd wordt. Wees feitelijk, kort en eerlijk over onzekerheid.
+
+Gebruik de zoekfunctie (web search). Beoordeel per vraag:
+1. "googlebaar": was het antwoord op de kern van de vragen al openbaar online te vinden VÓÓR de datum waarop de vragen gesteld werden? Denk aan eerdere Kamervragen met antwoord, Kamerbrieven, rijksoverheid.nl, CBS, wetteksten, nieuwsberichten. Kun je het niet aantonen, kies dan false en zeg dat in de uitleg. Alleen true als je concrete bronnen vindt; geef die in "bronnen" (alleen URL's die je echt gevonden hebt, nooit verzonnen).
+2. "vragen_samenvatting": 1 tot 3 zinnen, neutraal, wat de Kamerleden vragen.
+3. "antwoord_samenvatting": alleen als er een <antwoord> is meegegeven: 1 tot 3 zinnen, neutraal, wat het kabinet antwoordt. Anders null.
+4. "score" 1 tot 10: hoe sterk is de vraag als controle-instrument? Hoger als het kabinet erover gaat, de vraag beleid controleert en iets nieuws boven tafel haalt. Lager als hetzelfde al eerder gevraagd en beantwoord is, of als het antwoord gewoon online stond.
+5. "score_uitleg": 1 tot 3 zinnen.
+
+Wees strikt partijneutraal: beoordeel het soort vraag, nooit de politieke kleur, de indiener of het standpunt. Schrijf in het Nederlands.
+
+Geef als antwoord ALLEEN één JSON-codeblok met een lijst, één object per vraag, met precies het "id" dat hieronder bij de vraag staat:
+\`\`\`json
+[{"id": "...", "googlebaar": true, "googlebaar_uitleg": "...", "bronnen": [{"titel": "...", "url": "https://..."}], "vragen_samenvatting": "...", "antwoord_samenvatting": null, "score": 5, "score_uitleg": "..."}]
+\`\`\`
+Sla geen vragen over. De vragen:`;
+
+  let claudeBatch = []; // rijen in de huidige prompt
+
+  $("#b-claude").onclick = () => {
+    const p = $("#v-claude");
+    p.hidden = !p.hidden;
+    if (!p.hidden) p.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  $("#b-prompt").onclick = async () => {
+    const max = Math.max(1, Math.min(30, Number($("#c-max").value) || 10));
+    let q = sb.from("vragen")
+      .select("id,nummer,titel,datum,indieners,aan,status,vraag_tekst,antwoord_tekst,ai_concept,googlebaar,googlebaar_uitleg,bronnen,vragen_samenvatting,antwoord_samenvatting,score,score_uitleg")
+      .neq("status", "afgewezen")
+      .or("status.eq.concept,herzien_nodig.eq.true")
+      .order("datum", { ascending: false, nullsFirst: false })
+      .limit(max);
+    if ($("#c-zonder").checked) q = q.is("ai_concept", null);
+    const { data, error } = await q;
+    if (error) { melding("Vragen laden mislukt: " + foutTekst(error), "fout"); return; }
+    if (!data.length) { melding("Er zijn geen vragen die nog beoordeeld moeten worden.", "ok"); $("#c-stap2").hidden = true; return; }
+
+    claudeBatch = data;
+    const blokken = data.map((v, i) => [
+      `\n=== Vraag ${i + 1} ===`,
+      `id: ${v.id}`,
+      `Titel: ${v.titel}`,
+      `Kamernummer: ${v.nummer || "onbekend"}`,
+      `Datum gesteld: ${v.datum || "onbekend"}`,
+      `Indieners: ${(v.indieners || []).join(", ") || "onbekend"}`,
+      `Gericht aan: ${v.aan || "onbekend"}`,
+      `<vragen>\n${(v.vraag_tekst || "(De volledige tekst kon niet opgehaald worden; baseer je op de titel en zeg dat in de uitleg.)").trim()}\n</vragen>`,
+      v.antwoord_tekst ? `<antwoord>\n${v.antwoord_tekst.trim()}\n</antwoord>` : "(Er is nog geen antwoord van het kabinet.)",
+    ].join("\n"));
+    const prompt = PROMPT_KOP + "\n" + blokken.join("\n");
+    $("#c-prompt").value = prompt;
+    $("#c-antwoord").value = "";
+    const k = Math.round(prompt.length / 1000);
+    $("#c-info").textContent = `${data.length} ${data.length === 1 ? "vraag" : "vragen"} in de prompt (${k}k tekens).` +
+      (prompt.length > 300000 ? " Dit is erg lang; kies een kleiner aantal als Claude het niet in één keer aankan." : "");
+    $("#c-stap2").hidden = false;
+    melding("");
+  };
+
+  $("#b-kopieer").onclick = async () => {
+    const t = $("#c-prompt");
+    try { await navigator.clipboard.writeText(t.value); }
+    catch (e) { t.focus(); t.select(); document.execCommand("copy"); }
+    melding("Prompt gekopieerd. Plak hem in een nieuw gesprek op claude.ai.", "ok");
+  };
+
+  function leesClaudeAntwoord(tekst) {
+    const begin = tekst.indexOf("[");
+    const eind = tekst.lastIndexOf("]");
+    if (begin < 0 || eind <= begin) throw new Error("Geen lijst ([ … ]) gevonden in het geplakte antwoord. Kopieer het volledige antwoord van Claude.");
+    let lijst;
+    try { lijst = JSON.parse(tekst.slice(begin, eind + 1)); }
+    catch (e) { throw new Error("Het antwoord is geen geldige JSON. Vraag Claude: \"Geef alleen het JSON-codeblok opnieuw.\""); }
+    if (!Array.isArray(lijst)) throw new Error("Het antwoord is geen lijst.");
+    return lijst;
+  }
+
+  function schoonConcept(o) {
+    const str = (v, max = 2000) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+    const bronnen = [];
+    for (const b of Array.isArray(o.bronnen) ? o.bronnen.slice(0, 8) : []) {
+      try {
+        const u = new URL(str(b && b.url, 500));
+        if (u.protocol === "https:" || u.protocol === "http:") bronnen.push({ titel: str(b.titel, 200) || u.hostname, url: u.href });
+      } catch (e) { /* ongeldige URL overslaan */ }
+    }
+    const score = Number(o.score);
+    return {
+      googlebaar: typeof o.googlebaar === "boolean" ? o.googlebaar : null,
+      googlebaar_uitleg: str(o.googlebaar_uitleg),
+      bronnen,
+      vragen_samenvatting: str(o.vragen_samenvatting),
+      antwoord_samenvatting: str(o.antwoord_samenvatting) || null,
+      score: Number.isInteger(score) && score >= 1 && score <= 10 ? score : null,
+      score_uitleg: str(o.score_uitleg),
+      model: "claude.ai (handmatig geplakt)",
+      beoordeeld_op: new Date().toISOString(),
+    };
+  }
+
+  // Vul lege velden van een concept met het voorstel (zelfde regels als de import-functie).
+  function voorinvullen(rij, ai) {
+    const leeg = (v) => v === null || v === undefined || v === "" || (Array.isArray(v) && !v.length);
+    const uit = {};
+    if (rij.status !== "concept") return uit;
+    if (leeg(rij.googlebaar) && ai.googlebaar !== null) uit.googlebaar = ai.googlebaar;
+    if (leeg(rij.googlebaar_uitleg) && ai.googlebaar_uitleg) uit.googlebaar_uitleg = ai.googlebaar_uitleg;
+    if (leeg(rij.bronnen) && ai.bronnen.length) uit.bronnen = ai.bronnen;
+    if (leeg(rij.vragen_samenvatting) && ai.vragen_samenvatting) uit.vragen_samenvatting = ai.vragen_samenvatting;
+    if (leeg(rij.antwoord_samenvatting) && ai.antwoord_samenvatting && rij.antwoord_tekst) uit.antwoord_samenvatting = ai.antwoord_samenvatting;
+    if (leeg(rij.score) && ai.score !== null) uit.score = ai.score;
+    if (leeg(rij.score_uitleg) && ai.score_uitleg) uit.score_uitleg = ai.score_uitleg;
+    return uit;
+  }
+
+  $("#b-verwerk").onclick = async () => {
+    let lijst;
+    try { lijst = leesClaudeAntwoord($("#c-antwoord").value); } catch (e) { melding(e.message, "fout"); return; }
+    const perId = new Map(claudeBatch.map((r) => [r.id, r]));
+    const b = $("#b-verwerk");
+    b.disabled = true;
+    let ok = 0;
+    const fouten = [];
+    const gezien = new Set();
+    for (const item of lijst) {
+      const rij = item && perId.get(String(item.id || "").trim());
+      if (!rij) { fouten.push(`onbekend id "${item && item.id}"`); continue; }
+      if (gezien.has(rij.id)) continue;
+      gezien.add(rij.id);
+      const ai = schoonConcept(item);
+      if (!rij.antwoord_tekst) ai.antwoord_samenvatting = null;
+      const { error } = await sb.from("vragen").update({ ai_concept: ai, ai_fout: null, ...voorinvullen(rij, ai) }).eq("id", rij.id);
+      if (error) fouten.push(`${rij.nummer || rij.titel}: ${foutTekst(error)}`); else ok++;
+    }
+    const ontbreekt = claudeBatch.filter((r) => !gezien.has(r.id)).length;
+    b.disabled = false;
+    melding(`${ok} ${ok === 1 ? "vraag" : "vragen"} bijgewerkt met het voorstel van Claude.` +
+      (ontbreekt ? ` ${ontbreekt} ontbraken in het antwoord (maak een nieuwe prompt om die alsnog te doen).` : "") +
+      (fouten.length ? ` Problemen: ${fouten.join("; ")}` : "") +
+      " Open de concepten om alles te controleren en te publiceren.", fouten.length ? "fout" : "ok");
+    if (ok) { $("#c-antwoord").value = ""; $("#c-stap2").hidden = true; claudeBatch = []; }
+    laadLijst();
+  };
+
   // ---------------------------------------------------------------- bewerken
   function radioG() { const r = document.querySelector('input[name="g"]:checked'); return r ? r.value : ""; }
   function zetRadioG(v) { document.querySelectorAll('input[name="g"]').forEach((r) => (r.checked = r.value === v)); }
@@ -225,7 +372,7 @@
     };
     if (v.ai_fout) regel("Fout bij AI-beoordeling", v.ai_fout);
     const a = v.ai_concept;
-    if (!a) { if (!v.ai_fout) regel("Status", "Nog geen AI-voorstel"); return; }
+    if (!a) { if (!v.ai_fout) regel("Status", "Nog geen AI-voorstel. Gebruik \"Beoordelen via Claude.ai\" in het overzicht."); return; }
     regel("Googlebaar", a.googlebaar === true ? "ja" : a.googlebaar === false ? "nee" : "onbekend");
     regel("Uitleg googlebaar", a.googlebaar_uitleg);
     regel("Bronnen", (a.bronnen || []).map((b) => b.url).join("  ·  "));

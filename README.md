@@ -1,5 +1,5 @@
 # Kamervragen-quiz
-
+(Fully made with AI)
 A quiz about written questions from members of the Dutch parliament (Tweede Kamer):
 
 1. **Googlebaar?** Visitors guess whether the answer was already findable online before the question was asked.
@@ -79,6 +79,14 @@ Without it you can still import by clicking **"Nieuwe vragen ophalen"** on the a
 1. Open `admin.html`, log in, click **"2FA instellen"** (recommended), and scan the QR code.
 2. Click **"Nieuwe vragen ophalen"** (up to 3 new questions per click/run get an AI draft).
 3. Open a concept, check everything, tick "Ik heb alles gecontroleerd", and click **Publiceren**.
+
+## Without an API key: "Beoordelen via Claude.ai"
+
+The Anthropic API is billed separately from a Claude Pro subscription. If you don't set `ANTHROPIC_API_KEY`,
+the import still fetches questions (up to 20 per run, `MAX_IMPORT_PER_RUN`) without an AI draft. On the admin page,
+**"Beoordelen via Claude.ai"** builds one prompt for up to 30 open questions. You paste it into claude.ai (with web
+search on) and paste Claude's JSON answer back. The page validates it and stores it as the AI draft for each question.
+Review and publish as usual.
 
 ## How the review works
 
